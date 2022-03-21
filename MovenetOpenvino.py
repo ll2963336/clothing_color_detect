@@ -274,10 +274,6 @@ class MovenetOpenvino:
             yxmax = body.keypoints[KEYPOINT_DICT['right_hip']][1]
         
         cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 255, 255), 2)
-        # cv2.imshow('detectBody',frame[ymax:ymin,xmax:xmin])
-        # cv2.imshow('detectBody',frame[point_arr[3]:point_arr[1],point_arr[2]:point_arr[0]])
-
-        # 1
 
         if self.show_crop:
             cv2.rectangle(frame, (crop_region.xmin, crop_region.ymin), (crop_region.xmax, crop_region.ymax), (0,255,255), 2)
@@ -321,11 +317,6 @@ class MovenetOpenvino:
                 self.fps.draw(frame, orig=(50,50), size=1, color=(240,180,100))
             cv2.imshow("Movepose", frame)
 
-            hsvFrame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-            # print(point_arr)
-            # print(hsvFrame)
-            # print(frame)
-
             if self.output:
                 if self.input_type == "image":
                     cv2.imwrite(self.output, frame)
@@ -345,16 +336,18 @@ class MovenetOpenvino:
             elif key == ord('c'):
                 self.show_crop = not self.show_crop
             elif key == ord('w'):
-                # data = frame[point_arr[1]:point_arr[3],point_arr[0]:point_arr[2]]
                 cv2.imwrite("./img/crop.jpg",frame)
-                print(point_arr)
+                # print(point_arr)
                 minY = int(point_arr[1])
                 maxY = int(point_arr[3])
                 minX = int(point_arr[2])
                 maxX = int(point_arr[0])
                 data = cv2.imread("./img/crop.jpg")
-                cv2.imwrite("./img/crop.jpg",data[minY:maxY,minX:maxX])
-                find_color("./img/crop.jpg")
+                if(maxY > minY and maxX > minX):
+                    cv2.imwrite("./img/crop.jpg",data[minY:maxY,minX:maxX])
+                    find_color("./img/crop.jpg")
+                else:
+                    print('聚焦有問題，請重新按按鈕')
                 
         # Print some stats
         if nb_pd_inferences > 1:

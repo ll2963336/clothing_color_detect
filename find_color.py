@@ -6,7 +6,6 @@ import cv2
   
 # Start a while loop
 def find_color(url):
-    print(url)
     # Reading the video from the
     # webcam in image frames
     imageFrame = cv2.imread(url)
@@ -64,16 +63,8 @@ def find_color(url):
     for pic, contour in enumerate(contours):
         area = cv2.contourArea(contour)
         if(area > 300):
-            print('color is red')
+            print('color is red, HSV: [0,100,100], RGB: [255,0,0]')
             return
-            # x, y, w, h = cv2.boundingRect(contour)
-            # imageFrame = cv2.rectangle(imageFrame, (x, y), 
-            #                            (x + w, y + h), 
-            #                            (0, 0, 255), 2)
-              
-            # cv2.putText(imageFrame, "Red Colour", (x, y),
-            #             cv2.FONT_HERSHEY_SIMPLEX, 1.0,
-            #             (0, 0, 255))    
   
     # Creating contour to track green color
     contours, hierarchy = cv2.findContours(green_mask,
@@ -83,16 +74,8 @@ def find_color(url):
     for pic, contour in enumerate(contours):
         area = cv2.contourArea(contour)
         if(area > 300):
-            print('color is green')
+            print('color is green, HSV: [120,100,100], RGB: [0,255,0]')
             return
-            # x, y, w, h = cv2.boundingRect(contour)
-            # imageFrame = cv2.rectangle(imageFrame, (x, y), 
-            #                            (x + w, y + h),
-            #                            (0, 255, 0), 2)
-              
-            # cv2.putText(imageFrame, "Green Colour", (x, y),
-            #             cv2.FONT_HERSHEY_SIMPLEX, 
-            #             1.0, (0, 255, 0))
   
     # Creating contour to track blue color
     contours, hierarchy = cv2.findContours(blue_mask,
@@ -101,7 +84,7 @@ def find_color(url):
     for pic, contour in enumerate(contours):
         area = cv2.contourArea(contour)
         if(area > 300):
-            print('color is blue')
+            print('color is blue, HSV: [240,100,100], RGB: [0,0,255]')
             return
 
     print('I dont know')
