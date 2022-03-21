@@ -128,11 +128,6 @@ class MovenetOpenvino:
         bin_path = name + '.bin'
         print("Pose Detection model - Reading network files:\n\t{}\n\t{}".format(xml_path, bin_path))
         self.pd_net = self.ie.read_network(model=xml_path, weights=bin_path)
-        # Input blob: input:0 - shape: [1, 192, 192, 3] (for lightning)
-        # Input blob: input:0 - shape: [1, 256, 256, 3] (for thunder)
-        # Output blob: 7022.0 - shape: [1, 1, 1]
-        # Output blob: 7026.0 - shape: [1, 1, 17]
-        # Output blob: Identity - shape: [1, 1, 17, 3]
         self.pd_input_blob = next(iter(self.pd_net.input_info))
         print(f"Input blob: {self.pd_input_blob} - shape: {self.pd_net.input_info[self.pd_input_blob].input_data.shape}")
         _,self.pd_h,self.pd_w,_ = self.pd_net.input_info[self.pd_input_blob].input_data.shape
@@ -173,14 +168,6 @@ class MovenetOpenvino:
                 scores[KEYPOINT_DICT['right_shoulder']] > self.score_thresh))
 
     def determine_torso_and_body_range(self, keypoints, scores, center_x, center_y):
-        """Calculates the maximum distance from each keypoints to the center location.
-
-        The function returns the maximum distances from the two sets of keypoints:
-        full 17 keypoints and 4 torso keypoints. The returned information will be
-        used to determine the crop size. See determine_crop_region for more detail.
-        """
-        # import pdb
-        # pdb.set_trace()
         torso_joints = ['left_shoulder', 'right_shoulder', 'left_hip', 'right_hip']
         max_torso_yrange = 0.0
         max_torso_xrange = 0.0
@@ -206,15 +193,6 @@ class MovenetOpenvino:
         return [max_torso_yrange, max_torso_xrange, max_body_yrange, max_body_xrange]
 
     def determine_crop_region(self, body):
-        """Determines the region to crop the image for the model to run inference on.
-
-        The algorithm uses the detected joints from the previous frame to estimate
-        the square region that encloses the full body of the target person and
-        centers at the midpoint of two hip joints. The crop size is determined by
-        the distances between each joints and the center point.
-        When the model is not confident with the four torso joint predictions, the
-        function returns a default crop which is the full image padded to square.
-        """
         if self.torso_visible(body.scores):
             center_x = (body.keypoints[KEYPOINT_DICT['left_hip']][0] + body.keypoints[KEYPOINT_DICT['right_hip']][0]) // 2
             center_y = (body.keypoints[KEYPOINT_DICT['left_hip']][1] + body.keypoints[KEYPOINT_DICT['right_hip']][1]) // 2
@@ -234,7 +212,6 @@ class MovenetOpenvino:
 
     def pd_postprocess(self, inference, crop_region):
         kps = np.squeeze(inference[self.pd_kps]) # 17x3
-        # kps = np.where(kps<0, kps+1, kps) # Bug with Openvino 2021.2
         body = Body(scores=kps[:,2], keypoints_norm=kps[:,[1,0]])
         body.keypoints = (np.array([crop_region.xmin, crop_region.ymin]) + body.keypoints_norm * crop_region.size).astype(np.int)
         body.next_crop_region = self.determine_crop_region(body)
@@ -273,10 +250,10 @@ class MovenetOpenvino:
         if body.keypoints[KEYPOINT_DICT['right_hip']][1] < body.keypoints[KEYPOINT_DICT['left_hip']][1]:
             yxmax = body.keypoints[KEYPOINT_DICT['right_hip']][1]
         
-        cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 255, 255), 2)
+        # cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 255, 255), 2)
 
-        if self.show_crop:
-            cv2.rectangle(frame, (crop_region.xmin, crop_region.ymin), (crop_region.xmax, crop_region.ymax), (0,255,255), 2)
+        # if self.show_crop:
+        #     cv2.rectangle(frame, (crop_region.xmin, crop_region.ymin), (crop_region.xmax, crop_region.ymax), (0,255,255), 2)
 
         return [xmin, ymin, xmax, ymax]
 
@@ -337,7 +314,6 @@ class MovenetOpenvino:
                 self.show_crop = not self.show_crop
             elif key == ord('w'):
                 cv2.imwrite("./img/crop.jpg",frame)
-                # print(point_arr)
                 minY = int(point_arr[1])
                 maxY = int(point_arr[3])
                 minX = int(point_arr[2])
