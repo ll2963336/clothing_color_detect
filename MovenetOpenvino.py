@@ -1,4 +1,4 @@
-import numbers
+from ast import arg
 from tokenize import Number
 import numpy as np
 from collections import namedtuple
@@ -8,9 +8,18 @@ from FPS import FPS, now
 import argparse
 import os
 from openvino.inference_engine import IENetwork, IECore
+from time import sleep
 
-from find_color import find_color
+from get_color import get_color
 
+# 添加線程庫
+import threading
+
+# 隨機數插件
+from random import randint
+
+# 音樂插件
+from playsound import playsound
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_MODEL = SCRIPT_DIR / "models/movenet_singlepose_lightning_FP32.xml"
@@ -36,18 +45,32 @@ KEYPOINT_DICT = {
     'right_ankle': 16
 }
 
-# LINES_*_BODY are used when drawing the skeleton onto the source image. 
-# Each variable is a list of continuous lines.
-# Each line is a list of keypoints as defined at https://github.com/tensorflow/tfjs-models/tree/master/pose-detection#keypoint-diagram
-
-# LINES_BODY = [[4,2],[2,0],[0,1],[1,3],
-#                 [10,8],[8,6],[6,5],[5,7],[7,9],
-#                 [6,12],[12,11],[11,5],
-#                 [12,14],[14,16],[11,13],[13,15]]
-
 LINES_BODY = [[6,5],[6,12],[12,11],[11,5]]
 
+def sound_item(color):
+  sleep(1)
+  randNum = str(randint(1,10)).zfill(2)
+  print('./sound/Alarm'+randNum+'.wav')
+  playsound('./sound/Alarm'+randNum+'.wav')
 
+def video_item(screenName,color):
+    print(color)
+    cap_item = cv2.VideoCapture('./video/1.mp4')
+    t = threading.Thread(target=sound_item, args=('red',))
+    t.start()
+    while cap_item.isOpened():
+        _, frame = cap_item.read()
+        if not _:
+            break
+        
+        cv2.imshow(screenName,  frame)
+        key = cv2.waitKey(1)
+
+        # ESC
+        if key == 0:
+            break
+    t.join()
+    cap_item.release()
 class Body:
     def __init__(self, scores=None, keypoints_norm=None):
         self.scores = scores # scores of the keypoints
@@ -59,10 +82,6 @@ class Body:
         print('\n'.join("%s: %s" % item for item in attrs.items()))
 
 CropRegion = namedtuple('CropRegion',['xmin', 'ymin', 'xmax',  'ymax', 'size']) # All values are in pixel. The region is a square of size 'size' pixels
-
-
-
-    
 
 class MovenetOpenvino:
     def __init__(self, input_src=None,
@@ -219,7 +238,6 @@ class MovenetOpenvino:
         
 
     def pd_render(self, frame, body, crop_region):
-
         lines = [np.array([body.keypoints[point] for point in line]) for line in LINES_BODY if body.scores[line[0]] > self.score_thresh and body.scores[line[1]] > self.score_thresh]
         cv2.polylines(frame, lines, False, (255, 180, 90), 2, cv2.LINE_AA)
         
@@ -257,19 +275,36 @@ class MovenetOpenvino:
 
         return [xmin, ymin, xmax, ymax]
 
-                
     def run(self):
+
+        # init screen 1 互動動畫
+        cv2.namedWindow("loop_video", cv2.WINDOW_NORMAL)
+        cv2.setWindowProperty("loop_video", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+        cap = cv2.VideoCapture('./video/002.mp4')
+        frame_counter = 0
+
+        # init screen 2 webcam
+        cv2.namedWindow("Movepose", cv2.WINDOW_NORMAL)
+        cv2.moveWindow("Movepose",0,-900)
+        cv2.setWindowProperty("Movepose", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
         self.fps = FPS()
 
         nb_pd_inferences = 0
         glob_pd_rtrip_time = 0
 
-        use_previous_keypoints = False
-
         crop_region = self.init_crop_region
 
         while True:
+
+            ret, frameItem = cap.read()
+
+            frame_counter += 1
+            if frame_counter == int(cap.get(cv2.CAP_PROP_FRAME_COUNT)):
+                frame_counter = 0
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+
+            cv2.imshow("loop_video", frameItem)
                 
             if self.input_type == "image":
                 frame = self.img.copy()
@@ -292,6 +327,7 @@ class MovenetOpenvino:
 
             if self.show_fps:
                 self.fps.draw(frame, orig=(50,50), size=1, color=(240,180,100))
+            
             cv2.imshow("Movepose", frame)
 
             if self.output:
@@ -321,7 +357,9 @@ class MovenetOpenvino:
                 data = cv2.imread("./img/crop.jpg")
                 if(maxY > minY and maxX > minX):
                     cv2.imwrite("./img/crop.jpg",data[minY:maxY,minX:maxX])
-                    find_color("./img/crop.jpg")
+                    color = get_color("./img/crop.jpg")
+                    video_item("loop_video",color)
+
                 else:
                     print('聚焦有問題，請重新按按鈕')
                 
