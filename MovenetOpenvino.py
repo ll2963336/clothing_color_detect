@@ -1,9 +1,9 @@
 from ast import arg
-from tokenize import Number
 import numpy as np
 from collections import namedtuple
 import cv2
 from pathlib import Path
+
 from FPS import FPS, now
 import argparse
 import os
@@ -55,15 +55,20 @@ def sound_item(color):
 
 def video_item(screenName,color):
     print(color)
-    cap_item = cv2.VideoCapture('./video/1.mp4')
+    if color == 'red2':
+        cap_item = cv2.VideoCapture('./video/red.mp4')
+    else:
+        cap_item = cv2.VideoCapture('./video/'+color+'.mp4')
+
     t = threading.Thread(target=sound_item, args=('red',))
     t.start()
-    while cap_item.isOpened():
+    while True:
         _, frame = cap_item.read()
         if not _:
             break
-        
+        sleep(0.015)
         cv2.imshow(screenName,  frame)
+
         key = cv2.waitKey(1)
 
         # ESC
@@ -71,6 +76,7 @@ def video_item(screenName,color):
             break
     t.join()
     cap_item.release()
+
 class Body:
     def __init__(self, scores=None, keypoints_norm=None):
         self.scores = scores # scores of the keypoints
@@ -275,19 +281,23 @@ class MovenetOpenvino:
 
         return [xmin, ymin, xmax, ymax]
 
-    def run(self):
+    def run(self,window,window_width,window_height):
 
-        # init screen 1 互動動畫
+        # init window 0 互動動畫
         cv2.namedWindow("loop_video", cv2.WINDOW_NORMAL)
         cv2.setWindowProperty("loop_video", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         cap = cv2.VideoCapture('./video/002.mp4')
         frame_counter = 0
 
-        # init screen 2 webcam
+        # init window 1 webcam
         cv2.namedWindow("Movepose", cv2.WINDOW_NORMAL)
-        cv2.moveWindow("Movepose",0,-900)
         cv2.setWindowProperty("Movepose", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-
+        print(window,window_width,window_height)
+        # 控制選定window朝著xy方向移動
+        if(window == 0):
+            cv2.moveWindow("loop_video",int(window_width),int(window_height))
+        if(window == 1):
+            cv2.moveWindow("Movepose",int(window_width),int(window_height))
         self.fps = FPS()
 
         nb_pd_inferences = 0
@@ -391,7 +401,13 @@ if __name__ == "__main__":
                         help="Confidence score to determine whether a keypoint prediction is reliable (default=%(default)f)")                     
     parser.add_argument("-o","--output",
                         help="Path to output video file")
-    
+    parser.add_argument("-wi","--width",default=0,
+                        help="window移動的x軸距離，默認為0")
+    parser.add_argument("-hi","--height",default=0,
+                        help="window移動的y軸距離，默認為0")
+    parser.add_argument("-wd","--window",default=0,
+                        help="選擇想要移動的window，默認為0")
+                       
     args = parser.parse_args()
 
     
@@ -405,4 +421,5 @@ if __name__ == "__main__":
                     device=args.device, 
                     score_thresh=args.score_threshold,
                     output=args.output)
-    pd.run()
+                    
+    pd.run(args.window,args.width,args.height)
