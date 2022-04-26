@@ -13,16 +13,22 @@ from time import sleep
 from get_color import get_color
 
 # 添加線程庫
-import threading
+# import threading
 
 # 隨機數插件
 from random import randint
 
 # 音樂插件
-from playsound import playsound
+# from playsound import playsound
 
+# 全局变量
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_MODEL = SCRIPT_DIR / "models/movenet_singlepose_lightning_FP32.xml"
+
+# 循環播放的video地址
+LOOP_VIDEO_URL = './video/1.mp4'
+# 偵測到顏色後播放的第一段video地址
+FIRST_VIDEO_URL = './video/2.mp4'
 
 # Dictionary that maps from joint names to keypoint indices.
 KEYPOINT_DICT = {
@@ -47,26 +53,29 @@ KEYPOINT_DICT = {
 
 LINES_BODY = [[6,5],[6,12],[12,11],[11,5]]
 
-def sound_item(color):
-  sleep(1)
-  randNum = str(randint(1,10)).zfill(2)
-  print('./sound/Alarm'+randNum+'.wav')
-  playsound('./sound/Alarm'+randNum+'.wav')
+# def sound_item(color):
+#   sleep(1)
+#   randNum = str(randint(1,10)).zfill(2)
+#   print('./sound/Alarm'+randNum+'.wav')
+#   playsound('./sound/Alarm'+randNum+'.wav')
 
-def video_item(screenName,color):
-    print(color)
-    if color == 'red2':
-        cap_item = cv2.VideoCapture('./video/red.mp4')
+def video_item(screenName,isRandom,color):
+    cap_item = None
+    if(isRandom == True):
+        print(color)
+        randNum = str(randint(1,5)).zfill(1)
+        if color == 'red2':
+            cap_item = cv2.VideoCapture('./video/red/red'+randNum+'.mp4')
+        else:
+            cap_item = cv2.VideoCapture('./video/'+color+'/'+color+randNum+'.mp4')
     else:
-        cap_item = cv2.VideoCapture('./video/'+color+'.mp4')
+        cap_item = cv2.VideoCapture(FIRST_VIDEO_URL)
 
-    t = threading.Thread(target=sound_item, args=('red',))
-    t.start()
     while True:
         _, frame = cap_item.read()
         if not _:
             break
-        sleep(0.015)
+        sleep(0.012)
         cv2.imshow(screenName,  frame)
 
         key = cv2.waitKey(1)
@@ -74,7 +83,7 @@ def video_item(screenName,color):
         # ESC
         if key == 0:
             break
-    t.join()
+
     cap_item.release()
 
 class Body:
@@ -274,11 +283,6 @@ class MovenetOpenvino:
         if body.keypoints[KEYPOINT_DICT['right_hip']][1] < body.keypoints[KEYPOINT_DICT['left_hip']][1]:
             yxmax = body.keypoints[KEYPOINT_DICT['right_hip']][1]
         
-        # cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 255, 255), 2)
-
-        # if self.show_crop:
-        #     cv2.rectangle(frame, (crop_region.xmin, crop_region.ymin), (crop_region.xmax, crop_region.ymax), (0,255,255), 2)
-
         return [xmin, ymin, xmax, ymax]
 
     def run(self,window,window_width,window_height):
@@ -286,7 +290,7 @@ class MovenetOpenvino:
         # init window 0 互動動畫
         cv2.namedWindow("loop_video", cv2.WINDOW_NORMAL)
         cv2.setWindowProperty("loop_video", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-        cap = cv2.VideoCapture('./video/002.mp4')
+        cap = cv2.VideoCapture(LOOP_VIDEO_URL)
         frame_counter = 0
 
         # init window 1 webcam
@@ -368,7 +372,13 @@ class MovenetOpenvino:
                 if(maxY > minY and maxX > minX):
                     cv2.imwrite("./img/crop.jpg",data[minY:maxY,minX:maxX])
                     color = get_color("./img/crop.jpg")
-                    video_item("loop_video",color)
+
+                    if(color != None):
+                        video_item("loop_video",False,None)
+                        video_item("loop_video",True,color)
+
+                    else:
+                        print('沒有偵測到顏色')
 
                 else:
                     print('聚焦有問題，請重新按按鈕')
