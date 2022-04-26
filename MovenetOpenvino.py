@@ -13,13 +13,13 @@ from time import sleep
 from get_color import get_color
 
 # 添加線程庫
-# import threading
+import threading
 
 # 隨機數插件
 from random import randint
 
 # 音樂插件
-# from playsound import playsound
+from playsound import playsound
 
 # 全局变量
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -53,11 +53,11 @@ KEYPOINT_DICT = {
 
 LINES_BODY = [[6,5],[6,12],[12,11],[11,5]]
 
-# def sound_item(color):
+def sound_item(color):
 #   sleep(1)
-#   randNum = str(randint(1,10)).zfill(2)
-#   print('./sound/Alarm'+randNum+'.wav')
-#   playsound('./sound/Alarm'+randNum+'.wav')
+  randNum = str(randint(1,10)).zfill(2)
+  print('./sound/Alarm'+randNum+'.wav')
+  playsound('./sound/Alarm'+randNum+'.wav')
 
 def video_item(screenName,isRandom,color):
     cap_item = None
@@ -66,25 +66,46 @@ def video_item(screenName,isRandom,color):
         randNum = str(randint(1,5)).zfill(1)
         if color == 'red2':
             cap_item = cv2.VideoCapture('./video/red/red'+randNum+'.mp4')
+        if color == 'cyan':
+            cap_item =  cv2.VideoCapture('./video/blue/blue'+randNum+'.mp4')
         else:
             cap_item = cv2.VideoCapture('./video/'+color+'/'+color+randNum+'.mp4')
+
+        t = threading.Thread(target=sound_item, args=('red',))
+        t.start()
+        while True:
+            _, frame = cap_item.read()
+            if not _:
+                break
+            sleep(0.012)
+            cv2.imshow(screenName,  frame)
+
+            key = cv2.waitKey(1)
+
+            # ESC
+            if key == 0:
+                break
+        
+        t.join()
+        cap_item.release()
+
     else:
         cap_item = cv2.VideoCapture(FIRST_VIDEO_URL)
 
-    while True:
-        _, frame = cap_item.read()
-        if not _:
-            break
-        sleep(0.012)
-        cv2.imshow(screenName,  frame)
+        while True:
+            _, frame = cap_item.read()
+            if not _:
+                break
+            sleep(0.012)
+            cv2.imshow(screenName,  frame)
 
-        key = cv2.waitKey(1)
+            key = cv2.waitKey(1)
 
-        # ESC
-        if key == 0:
-            break
+            # ESC
+            if key == 0:
+                break
 
-    cap_item.release()
+        cap_item.release()
 
 class Body:
     def __init__(self, scores=None, keypoints_norm=None):
